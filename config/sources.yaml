@@ -1,0 +1,27 @@
+# Scrape targets per run. Adding a platform or source needs human sign-off (see CLAUDE.md).
+run1:
+  reddit:
+    subreddits:
+      - smallbusiness
+      - Entrepreneur
+      - SaaS
+      - sysadmin
+      - excel
+      - msp
+      - projectmanagement
+      - accounting
+      - realtors
+      - logistics
+    listings:
+      - {sort: top, time_filter: year}
+      - {sort: top, time_filter: month}
+      - {sort: new}
+    keywords:
+      - manual
+      - spreadsheet
+      - every week
+      - is there a tool
+      - workaround
+      - copy paste
+    top_comments_per_post: 20
+    min_text_length: 80
