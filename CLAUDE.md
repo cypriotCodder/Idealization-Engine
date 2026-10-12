@@ -1,6 +1,6 @@
 # CLAUDE.md — Ideation Pipeline
 
-Guidance for AI coding agents working in this repo. Read this file fully before making changes. The full build plan is in `docs/ideation-pipeline-plan.md`; model choices are in `docs/ideation-pipeline-models.md`.
+Guidance for AI coding agents working in this repo. Read this file fully before making changes. The full build plan is in `ideation-pipeline-plan.md`; model choices are in `ideation-pipeline-models.md` (both at the repo root).
 
 ## What this project is
 
@@ -42,6 +42,8 @@ eval/        labeled.jsonl, score.py
 dashboard/   Next.js app (later)
 docs/        plan + model docs
 tests/       mirrors the package layout
+ideation-pipeline-plan.md     build plan (root)
+ideation-pipeline-models.md   model selection (root)
 ```
 
 ## Database rules
@@ -49,7 +51,8 @@ tests/       mirrors the package layout
 - Schema changes only via new numbered migration files in `db/migrations/`. Never edit an applied migration.
 - Use parameterized queries. No string-built SQL.
 - Upserts keyed on natural keys (`external_id`, `text_hash`) for idempotency.
-- Every derived row records what produced it (`prompt_version`, model name, `run_label`).
+- Every derived row (`problems`, `clusters`, `specs`) records what produced it: `prompt_version`, `model`, `run_label`.
+- Embedding dimension is set in `config/models.yaml` and must match the `vector(N)` column. Changing the embedding provider or dimension requires a new migration and a full re-embed.
 
 ## Scraping rules
 
@@ -81,6 +84,23 @@ tests/       mirrors the package layout
 - Structured logging (no bare `print` in pipeline code).
 - Tests for: dedup, hashing, schema validation, scoring formula, clustering input/output shapes. Mock all network and LLM calls in tests.
 - Each stage runnable as a CLI: `python -m ingest.reddit --run-label run1 --limit 50`.
+
+### Code comments
+
+- Comment the *why*, not the *what*. Skip comments that just restate the line below them.
+- Write them the way a developer would jot a note to themselves: plain, short, first-person where natural ("skipping deleted posts, they have no text to filter", "hash first so we never keep the raw username").
+- Mark non-obvious choices, gotchas and trade-offs (rate limits, idempotency keys, why a threshold is what it is). No filler, no formal or marketing tone.
+- Use the same style for example snippets in docs and PR descriptions.
+
+## Git workflow
+
+- Commit often: one logical change per commit, as soon as it works (tests pass, lint clean). Don't batch unrelated work.
+- Commit only when the user asks or has said to commit as we go; never push without being asked. Never commit `.env` or other secrets.
+- Commit messages explain the change, not just name it:
+  - Subject line: imperative, under ~70 chars (e.g. `Add Reddit ingest with author hashing`).
+  - Body: what changed, why it was needed, and anything worth knowing (decisions, trade-offs, cost incurred, how it was verified).
+  - Written in plain, natural language, like the comments above.
+- Keep commits small and reviewable (golden rule 5). A migration, its code and its tests can go together; a refactor goes in its own commit.
 
 ## Before finishing any task
 
