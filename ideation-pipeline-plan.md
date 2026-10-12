@@ -42,6 +42,7 @@ ideation-pipeline/
 sources(id, platform, target, run_label, active)
 raw_items(
   id, source_id, platform, external_id UNIQUE,
+  parent_id REFERENCES raw_items(id) NULL,  -- set for comments; NULL for posts/reviews
   url, author_hash, title, text, rating,
   score, num_comments, created_at, scraped_at,
   text_hash, processed BOOL DEFAULT false
@@ -52,7 +53,7 @@ scrape_runs(id, source_id, started_at, finished_at, items_new, errors)
 ### Reddit (build first)
 - Run 1 subreddits: r/smallbusiness, r/Entrepreneur, r/SaaS, r/sysadmin, r/excel, r/msp, r/projectmanagement, r/accounting, r/realtors, r/logistics.
 - Pull top (year/month), new, and loose keyword searches: "manual", "spreadsheet", "every week", "is there a tool", "workaround", "copy paste".
-- Include top 20 comments per post as their own rows linked to the parent.
+- Include top 20 comments per post as their own rows, with `parent_id` pointing to the post row.
 - Min length 80 chars; skip deleted/removed; respect PRAW rate limits; run incrementally daily.
 
 ### G2 / Capterra (Apify)
@@ -107,13 +108,15 @@ scrape_runs(id, source_id, started_at, finished_at, items_new, errors)
 ### Table
 ```sql
 problems(
-  id, raw_item_id, prompt_version, relevant,
+  id, raw_item_id, prompt_version, model, run_label, relevant,
   category, problem_summary, persona, industry,
   workaround, tools_mentioned JSONB,
   time_cost, money_signal, evidence_quote,
   confidence, severity, embedding vector(1024)
 )
 ```
+
+**Embedding dimension:** `vector(1024)` assumes the default provider is Voyage (1024-dim). The dimension is set in `config/models.yaml`. If you switch providers (e.g. OpenAI text-embedding-3, which defaults to 1536 or 3072 but accepts a `dimensions` parameter), either request 1024 dimensions or add a migration and re-embed everything.
 
 ### Pipeline
 - `filter/run.py`: unprocessed rows → Batch API → poll → write `problems`.
@@ -130,7 +133,7 @@ problems(
 1. **Embed** `problem_summary + persona` for relevant rows.
 2. **Cluster** with HDBSCAN (min cluster size ~5).
 3. **Label clusters** with an LLM: name, canonical statement, merge/split flags.
-   Tables: `clusters(id, name, statement, persona, industry)`, `cluster_members(cluster_id, problem_id)`.
+   Tables: `clusters(id, name, statement, persona, industry, prompt_version, model, run_label)`, `cluster_members(cluster_id, problem_id)`.
 4. **Severity** per item, 1–5 rubric:
    1 = annoyance · 3 = recurring time cost · 5 = blocks work / costs money / causes errors.
 5. **Score in code, not by LLM:**
@@ -139,7 +142,16 @@ problems(
    - `cross_platform` = distinct platforms
    - `money` = share with money signal
    - `recency` = share from last 6 months
-   - `score` = weighted sum (weights in config; start 0.3 / 0.3 / 0.2 / 0.2)
+   - `score` = weighted sum of all five, each normalized to 0–1 (weights in `config/scoring.yaml`). Starting weights:
+
+     | Component | Weight |
+     |---|---|
+     | freq | 0.30 |
+     | severity | 0.25 |
+     | cross_platform | 0.20 |
+     | money | 0.15 |
+     | recency | 0.10 |
+     | **Total** | **1.00** |
 6. **Run 1 report:** top industries/personas by total score → decides Run 2.
 
 **Done when:** ranked cluster table + top-5 industry list.
@@ -165,7 +177,7 @@ problems(
   6. Pricing hypothesis
   7. Solo-dev build estimate
   8. Risks & kill criteria
-- Stored as markdown in `specs`, linked to cluster.
+- Stored as markdown in `specs(id, cluster_id, body_md, prompt_version, model, run_label, created_at)`.
 
 **Done when:** 10+ specs with competitor research.
 
@@ -187,8 +199,8 @@ problems(
 | 1 | Reddit + G2 ingestion, 5k+ items |
 | 2 | Filter agent passing eval |
 | 3 | Clusters, scores, Run 1 industry report |
-| 4 | Run 2 deep scrape + specs |
-| 5 | Dashboard + first validations |
+| 4 | Run 2 deep scrape; spec generation starts |
+| 5 | Specs finished, dashboard, first validations |
 
 ## Risks
 

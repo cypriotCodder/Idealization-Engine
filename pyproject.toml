@@ -1,0 +1,42 @@
+[project]
+name = "ideation-pipeline"
+version = "0.1.0"
+description = "Mines B2B complaints and turns the strongest clusters into Micro-SaaS specs"
+requires-python = ">=3.12"
+dependencies = [
+    "praw>=7.8",
+    "psycopg[binary]>=3.2",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "ruff>=0.6",
+    "types-pyyaml>=6.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "T20"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["db", "ingest", "filter", "synth", "eval", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["praw.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

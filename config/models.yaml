@@ -1,0 +1,11 @@
+# Model per task (see ideation-pipeline-models.md). Never inline model names in code.
+filter: claude-haiku-5-5
+severity: claude-haiku-5-5
+cluster_label: claude-sonnet-5-5
+spec_writer: claude-opus-5-5
+spec_critic: claude-sonnet-5-5
+
+embedding:
+  provider: voyage
+  # Must match the vector(N) column; changing it needs a migration and a full re-embed.
+  dimension: 1024
