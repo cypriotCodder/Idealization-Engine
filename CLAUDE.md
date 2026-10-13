@@ -104,6 +104,21 @@ ideation-pipeline-models.md   model selection (root)
   - Written in plain, natural language, like the comments above.
 - Keep commits small and reviewable (golden rule 5). A migration, its code and its tests can go together; a refactor goes in its own commit.
 
+## Delegation (subagents)
+
+Hand output-heavy or repetitive work to a subagent so its noise stays out of
+the main context. Keep design decisions and edits to core logic on the main
+agent.
+
+- **Verifying changes** → the `test-runner` agent (runs pytest/ruff/mypy,
+  returns only failures). Use it instead of running the checks inline.
+- **Searching the codebase** → the built-in `Explore` agent.
+- **Reviewing a diff** → the `/code-review` and `/security-review` skills.
+
+Don't delegate trivially: a subagent starts with no context, so a one-line
+check is cheaper to just run inline. Delegate when the output is long or the
+task is independent.
+
 ## Before finishing any task
 
 - [ ] Tests pass (`pytest`), lint and types clean
