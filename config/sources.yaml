@@ -1,27 +1,99 @@
-# Scrape targets per run. Adding a platform or source needs human sign-off (see CLAUDE.md).
-run1:
-  reddit:
-    subreddits:
-      - smallbusiness
-      - Entrepreneur
-      - SaaS
-      - sysadmin
-      - excel
-      - msp
-      - projectmanagement
-      - accounting
-      - realtors
-      - logistics
-    listings:
-      - {sort: top, time_filter: year}
-      - {sort: top, time_filter: month}
-      - {sort: new}
-    keywords:
-      - manual
-      - spreadsheet
-      - every week
-      - is there a tool
-      - workaround
-      - copy paste
-    top_comments_per_post: 20
-    min_text_length: 80
+# config/sources.yaml — Run 1 (broad discovery)
+# Only sources with active: true are scraped.
+
+run_label: run1
+
+defaults:
+  min_text_length: 80
+  lookback_days: 365
+
+stackexchange:
+  active: true
+  api_key_env: STACKEXCHANGE_KEY
+  sites:
+    - site: superuser
+    - site: webapps
+    - site: stackoverflow
+      tags: [excel, google-sheets, vba]
+  keywords: [automate, "every week", manually, "copy from", import, sync, "is there a way"]
+  include_answers: true
+  # accepted answer first, then highest voted
+  top_answers_per_question: 3
+  min_score: 1
+  # 100 questions per page; caps how deep each keyword search goes
+  max_pages_per_query: 3
+
+hackernews:
+  active: true
+  api: https://hn.algolia.com/api/v1
+  # double quotes inside a query mean "match this exact phrase"; without them
+  # Algolia matches the words anywhere in the text, which is mostly noise
+  queries:
+    - "Ask HN tool"
+    - '"wish there was"'
+    - '"manual process"'
+    - "spreadsheet"
+    - '"is there a tool"'
+  include_comments: true
+  # applies to stories only; the API doesn't expose points for comments
+  min_points: 5
+  # 100 hits per page; caps how deep each query goes
+  max_pages_per_query: 3
+  # comments pulled from the thread of each stored story
+  max_comments_per_story: 50
+
+apify_reviews:
+  active: true
+  api_token_env: APIFY_TOKEN
+  # one paid actor covers G2 and Capterra; it takes a product name, not a category
+  actor: zen-studio/software-review-scraper
+  platforms: [g2, capterra]
+  star_ratings: [1, 2, 3]
+  # newest low-star reviews: recent complaints are more likely to be unsolved
+  sort: most_recent
+  # 100 is the actor's minimum; the cost cap below is what really stops a run (~80 reviews)
+  max_results_per_product: 100
+  # USD, enforced by Apify per run: $0.05 start + ~$0.005 per review
+  max_charge_usd_per_product: 0.45
+  # USD, checked before any run starts; the free plan gives $5/month
+  max_total_charge_usd: 4.50
+  # one product per category: crm, hr, accounting, project management, inventory,
+  # field service, property management, scheduling, invoicing, help desk
+  products:
+    - Pipedrive
+    - BambooHR
+    - QuickBooks Online
+    - monday.com
+    - Cin7
+    - Jobber
+    - AppFolio
+    - When I Work
+    - FreshBooks
+    - Freshdesk
+  # Shopify App Store (inventory, orders-and-shipping, finances, customer-support) is
+  # postponed until there is Apify credit for it
+
+atlassian_marketplace:
+  active: true
+  # official public API, no key and no Apify needed
+  api: https://marketplace.atlassian.com/rest/2
+  # names must match Atlassian's own category names exactly
+  categories: ["Project management", "Workflow", "IT & helpdesk"]
+  # most popular apps first
+  apps_per_category: 30
+  max_rating: 3
+  # newest reviews scanned per app, before the star filter
+  max_reviews_per_app: 200
+  # low-star reviews are rare, so look further back than the 365-day default
+  lookback_days: 1095
+
+reddit:
+  active: false   # enable once API access is approved; never use public .json endpoints
+  client_id_env: REDDIT_CLIENT_ID
+  client_secret_env: REDDIT_CLIENT_SECRET
+  subreddits: [smallbusiness, Entrepreneur, SaaS, sysadmin, excel, msp, projectmanagement, accounting, realtors, logistics]
+  keywords: [manual, spreadsheet, "every week", "is there a tool", workaround, "copy paste"]
+  top_comments_per_post: 20
+
+jobs:
+  active: false   # Run 2 only
