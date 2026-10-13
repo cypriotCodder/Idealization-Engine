@@ -25,11 +25,11 @@ ideation-pipeline/
 └── dashboard/     # later
 ```
 
-- Accounts/keys: Reddit script app, Anthropic API, Apify (free tier), embeddings provider.
+- Accounts/keys: Stack Exchange app key, Anthropic API, Apify (free tier), embeddings provider. Reddit script app once approved.
 - Postgres + pgvector (Docker locally, or Supabase/Neon).
 - Secrets in `.env`; targets in `config/sources.yaml`, never hard-coded.
 
-**Done when:** migrations create tables and a test script reads one Reddit post.
+**Done when:** migrations create tables and a test script reads one Stack Exchange question.
 
 ---
 
@@ -50,8 +50,34 @@ raw_items(
 scrape_runs(id, source_id, started_at, finished_at, items_new, errors)
 ```
 
-### Reddit (build first)
-- Run 1 subreddits: r/smallbusiness, r/Entrepreneur, r/SaaS, r/sysadmin, r/excel, r/msp, r/projectmanagement, r/accounting, r/realtors, r/logistics.
+### Run 1 sources (Reddit API approval pending)
+
+| Source | Access | Build order |
+|---|---|---|
+| Stack Exchange API | Official, free key, 10k req/day | 1st |
+| Hacker News (Algolia API) | Official, no key | 2nd |
+| G2 / Capterra | Apify | 3rd |
+| Shopify App Store + Atlassian Marketplace | Apify | 4th |
+| Reddit | PRAW — **only once API access is approved** | later |
+
+Do **not** use Reddit's public `.json` endpoints while the application is pending.
+
+### Stack Exchange (build first)
+- Sites/tags: Super User, Web Applications, Stack Overflow `[excel]` `[google-sheets]` `[vba]`.
+- Keyword search: "automate", "every week", "manually", "copy from", "import", "sync".
+- Pull question + accepted/top answers; answers become rows with `parent_id`.
+- Use `score` and `view_count` as engagement signals.
+
+### Hacker News (Algolia API)
+- Search stories and comments: "Ask HN" + "tool", "wish there was", "manual process", "spreadsheet".
+- Comments become rows with `parent_id`.
+
+### Marketplace reviews (Apify)
+- Shopify App Store and Atlassian Marketplace, 1–3★ reviews, business/ops app categories.
+- Same handling as G2/Capterra.
+
+### Reddit (when approved)
+- Subreddits: r/smallbusiness, r/Entrepreneur, r/SaaS, r/sysadmin, r/excel, r/msp, r/projectmanagement, r/accounting, r/realtors, r/logistics.
 - Pull top (year/month), new, and loose keyword searches: "manual", "spreadsheet", "every week", "is there a tool", "workaround", "copy paste".
 - Include top 20 comments per post as their own rows, with `parent_id` pointing to the post row.
 - Min length 80 chars; skip deleted/removed; respect PRAW rate limits; run incrementally daily.
@@ -196,7 +222,7 @@ problems(
 | Week | Deliverable |
 |---|---|
 | 0 | Repo, DB, keys |
-| 1 | Reddit + G2 ingestion, 5k+ items |
+| 1 | Stack Exchange, HN, G2/Capterra, marketplace ingestion, 5k+ items |
 | 2 | Filter agent passing eval |
 | 3 | Clusters, scores, Run 1 industry report |
 | 4 | Run 2 deep scrape; spec generation starts |
@@ -207,7 +233,8 @@ problems(
 - **Scrape bias** — rotate categories between runs.
 - **Loud minorities** — count unique authors; require cross-platform evidence.
 - **Already solved** — competitor search in Phase 5 is mandatory.
-- **Blocking / ToS** — low volume, cache everything, Reddit first.
+- **Blocking / ToS** — low volume, cache everything; prefer official APIs (Stack Exchange, HN) over scraping.
+- **Reddit approval delay** — pipeline runs without it; resubmit after ~2 weeks of silence.
 
 ## Estimated cost (first full run)
 

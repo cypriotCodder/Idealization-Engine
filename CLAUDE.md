@@ -24,7 +24,7 @@ ingest → raw_items → filter (Haiku) → problems → embed + cluster → sco
 - Python 3.12+ for ingest, filter, synth (managed with `uv`)
 - PostgreSQL 16 + pgvector
 - Anthropic SDK (Batch API for bulk calls)
-- PRAW (Reddit), Apify client (G2/Capterra)
+- httpx (Stack Exchange, HN Algolia), Apify client (G2/Capterra, marketplaces), PRAW (Reddit, later)
 - HDBSCAN + numpy for clustering
 - Next.js + TypeScript for the dashboard (Phase 6 only)
 
@@ -33,7 +33,7 @@ Do not add new dependencies without stating why in the change summary.
 ## Repo layout
 
 ```
-ingest/      one module per platform: reddit.py, apify_reviews.py, jobs.py
+ingest/      one module per platform: stackexchange.py, hackernews.py, apify_reviews.py, jobs.py, reddit.py (disabled until API approved)
 filter/      run.py (batch submit/poll/write), schema.py
 synth/       embed.py, cluster.py, label.py, severity.py, score.py, spec.py
 db/          migrations/ (numbered SQL), connection.py
@@ -56,7 +56,9 @@ ideation-pipeline-models.md   model selection (root)
 
 ## Scraping rules
 
-- Respect rate limits and ToS; Reddit first. Keep G2/Capterra volume low.
+- Respect rate limits and ToS; prefer official APIs (Stack Exchange, HN Algolia). Keep Apify-scraped volume (G2, Capterra, marketplaces) low.
+- Reddit is disabled until API access is approved. Never use Reddit's public `.json` endpoints.
+- Only scrape sources with `active: true` in `config/sources.yaml`.
 - Never store raw usernames — only salted `author_hash`.
 - Skip deleted/removed content and texts under 80 chars.
 - Log each run to `scrape_runs` (new items, errors).
@@ -83,7 +85,7 @@ ideation-pipeline-models.md   model selection (root)
 - Functions small and pure where possible; I/O at the edges.
 - Structured logging (no bare `print` in pipeline code).
 - Tests for: dedup, hashing, schema validation, scoring formula, clustering input/output shapes. Mock all network and LLM calls in tests.
-- Each stage runnable as a CLI: `python -m ingest.reddit --run-label run1 --limit 50`.
+- Each stage runnable as a CLI: `python -m ingest.stackexchange --run-label run1 --limit 50`.
 
 ### Code comments
 
